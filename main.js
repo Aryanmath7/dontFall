@@ -22,12 +22,16 @@ class BasicWorldDemo {
             this._OnWindowResize();
         }, false);
 
-        const fov = 60;
+        const fov = 80;
         const aspect = 1920 / 1080;
         const near = 1.0;
         const far = 1000.0;
         this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
-        this._camera.position.set(75, 20, 0);
+        this._camera.position.set(75, 40, 0);
+        
+        const center = new THREE.Vector3(0,10,0);
+
+        this._camera.lookAt(center);
 
         this._scene = new THREE.Scene();
 
@@ -36,10 +40,10 @@ class BasicWorldDemo {
         const light = new THREE.AmbientLight(color, intensity);
         this._scene.add(light);
 
-        const controls = new OrbitControls(
-            this._camera, this._threejs.domElement);
-        controls.target.set(0, 40, 0);
-        controls.update();
+        // const controls = new OrbitControls(
+        //     this._camera, this._threejs.domElement);
+        // controls.target.set(0, 40, 0);
+        // controls.update();
 
         const loader = new THREE.CubeTextureLoader();
         const texture = loader.load([
@@ -67,7 +71,7 @@ class BasicWorldDemo {
         //plane.rotation.z = 90;
         plane.rotation.y = -Math.PI / 2;
         this._scene.add(plane);
-        
+
 
         this._RAF();
 
@@ -90,6 +94,7 @@ class BasicWorldDemo {
             this._box.receiveShadow = true;
             //box.userData.socketId = id; // Store socket ID for each box
             this._scene.add(this._box);
+            
             console.log("New player box created");
         });
 
