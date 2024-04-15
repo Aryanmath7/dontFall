@@ -55,7 +55,7 @@ class BasicWorldDemo {
 
         console.log("we made it here");
 
-        const socket = io('http://localhost:3000');
+        const socket = io('http://78.138.17.29:3000');
 
         //Create our own box here and send its information to server
         socket.on('player-created', (playerData) => {
