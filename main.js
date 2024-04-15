@@ -174,16 +174,16 @@ class BasicWorldDemo {
     _OnKeyDown(event) {
         const speed = 1; // Adjust the speed as needed
         switch (event.key) {
-            case 'w':
+            case 'd':
                 this._box.position.z -= speed;
                 break;
-            case 'a':
+            case 'w':
                 this._box.position.x -= speed;
                 break;
-            case 's':
+            case 'a':
                 this._box.position.z += speed;
                 break;
-            case 'd':
+            case 's':
                 this._box.position.x += speed;
                 break;
         }
