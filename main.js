@@ -38,18 +38,36 @@ class BasicWorldDemo {
 
         const controls = new OrbitControls(
             this._camera, this._threejs.domElement);
-        controls.target.set(0, 20, 0);
+        controls.target.set(0, 40, 0);
         controls.update();
 
+        const loader = new THREE.CubeTextureLoader();
+        const texture = loader.load([
+            './resources/right.png',
+            './resources/left.png',
+            './resources/top.png',
+            './resources/bottom.png',
+            './resources/front.png',
+            './resources/back.png',
+        ]);
+        this._scene.background = texture;
+
         const plane = new THREE.Mesh(
-            new THREE.PlaneGeometry(100, 100, 10, 10),
+            new THREE.BoxGeometry(100, 10, 100), // Adjust the second parameter (height) to make the plane thicker
             new THREE.MeshStandardMaterial({
                 color: 0xFFFFFF,
-            }));
+                transparent: true,
+                opacity: 1,
+                side: THREE.DoubleSide,
+            })
+        );
         plane.castShadow = false;
         plane.receiveShadow = true;
-        plane.rotation.x = -Math.PI / 2;
+        //plane.rotation.x = -Math.PI / 2;
+        //plane.rotation.z = 90;
+        plane.rotation.y = -Math.PI / 2;
         this._scene.add(plane);
+        
 
         this._RAF();
 
@@ -57,13 +75,14 @@ class BasicWorldDemo {
 
         const socket = io('https://78.138.17.29:3000');
 
+
         //Create our own box here and send its information to server
         socket.on('player-created', (playerData) => {
             console.log("Player data received: ", playerData);
             const { position, color } = playerData;
 
             this._box = new THREE.Mesh(
-                new THREE.BoxGeometry(2, 2, 2),
+                new THREE.BoxGeometry(5, 5, 5),
                 new THREE.MeshStandardMaterial({ color })
             );
             this._box.position.set(position.x, position.y, position.z);
@@ -91,7 +110,7 @@ class BasicWorldDemo {
                 const existingPlayerBox = this._scene.children.find((child) => {
                     return child instanceof THREE.Mesh && child.userData.socketId === playerId;
                 });
-                
+
                 if (existingPlayerBox) {
                     // If the player already exists, update its position and color
                     existingPlayerBox.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
@@ -99,7 +118,7 @@ class BasicWorldDemo {
                 } else {
                     // If the player does not exist, create a new box for the player
                     const playerBox = new THREE.Mesh(
-                        new THREE.BoxGeometry(2, 2, 2),
+                        new THREE.BoxGeometry(5, 5, 5),
                         new THREE.MeshStandardMaterial({ color: playerData.color })
                     );
                     playerBox.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
@@ -120,11 +139,6 @@ class BasicWorldDemo {
             });
         });
 
-        //On keypress we have to send information to server
-
-        //Update all boxes (other than our own) positions based on server update
-
-
 
         // Add event listener to send box updates when key is pressed
         document.addEventListener('keydown', (event) => {
@@ -133,9 +147,6 @@ class BasicWorldDemo {
             const color = this._box.material.color.getHex();
             socket.emit('update-box', { position, color });
         }, false);
-
-        // // Add event listeners for keyboard controls
-        // document.addEventListener('keydown', this._OnKeyDown.bind(this), false);
     }
 
     _OnWindowResize() {
