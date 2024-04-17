@@ -1,5 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118/build/three.module.js';
-//import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/controls/OrbitControls.js';
 
 const DEFAULT_MASS = 10;
 
@@ -125,6 +125,11 @@ class BasicWorldDemo {
         const light = new THREE.AmbientLight(color, intensity);
         this._scene.add(light);
 
+        const controls = new OrbitControls(
+            this._camera, this._threejs.domElement);
+        controls.target.set(0, 20, 0);
+        controls.update();
+
         const loader = new THREE.CubeTextureLoader();
         const texture = loader.load([
             './resources/right.png',
@@ -146,6 +151,8 @@ class BasicWorldDemo {
                     new THREE.MeshStandardMaterial({ color: 0xFFFFFF })
                 );
                 box.position.set(i * boxSize, 0, j * boxSize); // Adjust the positions according to the grid
+                console.log('Setting box position: ', box.position.x, box.position.y, box.position.z);
+                console.log('Setting box quaternion: ', box.quaternion.x, box.quaternion.y, box.quaternion.z, box.quaternion.w);
                 box.castShadow = false;
                 box.receiveShadow = true;
 
@@ -153,6 +160,10 @@ class BasicWorldDemo {
 
                 const rbBox = new RigidBody();
                 rbBox.createBox(0, box.position, box.quaternion, new THREE.Vector3(boxSize, boxSize, boxSize * 2));
+                const rbPos = rbBox.body_.getCenterOfMassTransform().getOrigin();
+                const rbQuat = rbBox.body_.getCenterOfMassTransform().getRotation();
+                console.log('Physics box position: ', rbPos.x(), rbPos.y(), rbPos.z());
+                console.log('Physics box quaternion: ', rbQuat.x(), rbQuat.y(), rbQuat.z(), rbQuat.w());
                 rbBox.setRestitution(0.99);
                 this.physicsWorld_.addRigidBody(rbBox.body_);
             }
@@ -174,7 +185,7 @@ class BasicWorldDemo {
             this._box.receiveShadow = true;
 
             const rbBox = new RigidBody();
-            rbBox.createBox(1, this._box.position, this._box.quaternion, new THREE.Vector3(playerData.position.x, playerData.position.y, playerData.position.z));
+            rbBox.createBox(1, this._box.position, this._box.quaternion, new THREE.Vector3(5, 5, 5));
             rbBox.setRestitution(0.25);
             rbBox.setFriction(1);
             rbBox.setRollingFriction(5);
@@ -187,6 +198,7 @@ class BasicWorldDemo {
             this._scene.add(this._box);
 
             console.log("New player box created");
+
         });
 
         socket.emit('create-player');
