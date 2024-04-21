@@ -125,10 +125,10 @@ class BasicWorldDemo {
         const light = new THREE.AmbientLight(color, intensity);
         this._scene.add(light);
 
-        const controls = new OrbitControls(
-            this._camera, this._threejs.domElement);
-        controls.target.set(0, 20, 0);
-        controls.update();
+        // const controls = new OrbitControls(
+        //     this._camera, this._threejs.domElement);
+        // controls.target.set(0, 20, 0);
+        // controls.update();
 
         const loader = new THREE.CubeTextureLoader();
         const texture = loader.load([
@@ -151,8 +151,8 @@ class BasicWorldDemo {
                     new THREE.MeshStandardMaterial({ color: 0xFFFFFF })
                 );
                 box.position.set(i * boxSize, 0, j * boxSize); // Adjust the positions according to the grid
-                console.log('Setting box position: ', box.position.x, box.position.y, box.position.z);
-                console.log('Setting box quaternion: ', box.quaternion.x, box.quaternion.y, box.quaternion.z, box.quaternion.w);
+                //console.log('Setting box position: ', box.position.x, box.position.y, box.position.z);
+                //console.log('Setting box quaternion: ', box.quaternion.x, box.quaternion.y, box.quaternion.z, box.quaternion.w);
                 box.castShadow = false;
                 box.receiveShadow = true;
 
@@ -162,8 +162,8 @@ class BasicWorldDemo {
                 rbBox.createBox(0, box.position, box.quaternion, new THREE.Vector3(boxSize, boxSize, boxSize * 2));
                 const rbPos = rbBox.body_.getCenterOfMassTransform().getOrigin();
                 const rbQuat = rbBox.body_.getCenterOfMassTransform().getRotation();
-                console.log('Physics box position: ', rbPos.x(), rbPos.y(), rbPos.z());
-                console.log('Physics box quaternion: ', rbQuat.x(), rbQuat.y(), rbQuat.z(), rbQuat.w());
+                //console.log('Physics box position: ', rbPos.x(), rbPos.y(), rbPos.z());
+                //console.log('Physics box quaternion: ', rbQuat.x(), rbQuat.y(), rbQuat.z(), rbQuat.w());
                 rbBox.setRestitution(0.99);
                 this.physicsWorld_.addRigidBody(rbBox.body_);
             }
@@ -185,7 +185,16 @@ class BasicWorldDemo {
             this._box.receiveShadow = true;
 
             const rbBox = new RigidBody();
-            rbBox.createBox(1, this._box.position, this._box.quaternion, new THREE.Vector3(5, 5, 5));
+
+            const newQuaternion = new THREE.Quaternion(
+                playerData.quaternion.x,
+                playerData.quaternion.y,
+                playerData.quaternion.z,
+                playerData.quaternion.w
+            );
+
+
+            rbBox.createBox(1, this._box.position, newQuaternion, new THREE.Vector3(5, 5, 5));
             rbBox.setRestitution(0.25);
             rbBox.setFriction(1);
             rbBox.setRollingFriction(5);
@@ -205,6 +214,7 @@ class BasicWorldDemo {
 
         //We have gather information about all other boxes and update our scene from server
         socket.on('update-players', (playersData) => {
+            console.log(playersData);
             // Iterate over the player data received from the server
             for (const playerId in playersData) {
                 const playerData = playersData[playerId];
@@ -216,10 +226,21 @@ class BasicWorldDemo {
                     return child instanceof THREE.Mesh && child.userData.socketId === playerId;
                 });
 
+                console.log("This is a test:");
+                console.log(playerData);
+                const newQuaternion = new THREE.Quaternion(
+                    playerData.quaternion.x,
+                    playerData.quaternion.y,
+                    playerData.quaternion.z,
+                    playerData.quaternion.w
+                );
+
+
                 if (existingPlayerBox) {
                     // If the player already exists, update its position and color
                     existingPlayerBox.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
                     existingPlayerBox.material.color.setHex(playerData.color);
+                    existingPlayerBox.quaternion.copy(newQuaternion);
                 } else {
                     // If the player does not exist, create a new box for the player
                     const playerBox = new THREE.Mesh(
@@ -227,6 +248,7 @@ class BasicWorldDemo {
                         new THREE.MeshStandardMaterial({ color: playerData.color })
                     );
                     playerBox.position.set(playerData.position.x, playerData.position.y, playerData.position.z);
+                    playerBox.quaternion.copy(newQuaternion);
                     playerBox.castShadow = true;
                     playerBox.receiveShadow = true;
                     playerBox.userData.socketId = playerId; // Store socket ID for each box
@@ -238,7 +260,7 @@ class BasicWorldDemo {
                     // rbBox.setRollingFriction(5);
                     // this.physicsWorld_.addRigidBody(rbBox.body_);
                     // this.rigidBodies_.push({ mesh: playerBox, rigidBody: rbBox });
-                    
+
                     this._scene.add(playerBox);
 
                     console.log("New player box created for player ID: ", playerId);
@@ -254,18 +276,50 @@ class BasicWorldDemo {
             });
         });
 
+        this.updateInterval = setInterval(() => {
+            this._SendBoxUpdate(socket);
+        }, 1000 / 24);
+
         // Add event listener to send box updates when key is pressed
         document.addEventListener('keydown', (event) => {
             this._OnKeyDown(event);
             const position = this._box.position.clone();
             const color = this._box.material.color.getHex();
-            socket.emit('update-box', { position, color });
+            const quaternionData = this._box.quaternion.clone();
+
+            const quaternion = {
+                x: quaternionData.x,
+                y: quaternionData.y,
+                z: quaternionData.z,
+                w: quaternionData.w
+            };
+
+            socket.emit('update-box', { position, color, quaternion});
         }, false);
 
         this.tmpTransform_ = new Ammo.btTransform();
         this.previousRAF_ = null;
         this._RAF();
     }
+
+    _SendBoxUpdate(socket) {
+        // Ensure _box is initialized
+        if (!this._box) return;
+
+        const position = this._box.position.clone();
+        const color = this._box.material.color.getHex();
+        const quaternionData = this._box.quaternion.clone();
+
+        const quaternion = {
+            x: quaternionData.x,
+            y: quaternionData.y,
+            z: quaternionData.z,
+            w: quaternionData.w,
+        };
+
+        socket.emit("update-box", { position, color, quaternion });
+    }
+
 
     _OnWindowResize() {
         this._camera.aspect = window.innerWidth / window.innerHeight;
@@ -297,7 +351,6 @@ class BasicWorldDemo {
             const quat = this.tmpTransform_.getRotation();
             const pos3 = new THREE.Vector3(pos.x(), pos.y(), pos.z());
             const quat3 = new THREE.Quaternion(quat.x(), quat.y(), quat.z(), quat.w());
-
             this.rigidBodies_[i].mesh.position.copy(pos3);
             this.rigidBodies_[i].mesh.quaternion.copy(quat3);
         }
