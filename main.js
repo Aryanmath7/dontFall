@@ -1,5 +1,11 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118/build/three.module.js';
 import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/controls/OrbitControls.js';
+import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/postprocessing/RenderPass.js';
+import { OutlinePass } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/postprocessing/OutlinePass.js';
+import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'https://cdn.jsdelivr.net/npm/three@0.118/examples/jsm/shaders/FXAAShader.js';
+
 
 const DEFAULT_MASS = 10;
 
@@ -130,6 +136,40 @@ class BasicWorldDemo {
         // controls.target.set(0, 20, 0);
         // controls.update();
 
+        // Setup post-processing
+        this._composer = new EffectComposer(this._threejs);
+        const renderPass = new RenderPass(this._scene, this._camera);
+        this._composer.addPass(renderPass);
+
+        // Create the outline pass with a black edge
+        const outlinePass = new OutlinePass(
+            new THREE.Vector2(window.innerWidth, window.innerHeight),
+            this._scene,
+            this._camera
+        );
+
+        // Set the outline color to black
+        outlinePass.visibleEdgeColor.set(0x000000);
+
+        // Adjust edge thickness for a thicker outline
+        outlinePass.edgeThickness = 3.0; // Increase this value for a thicker outline
+
+        // Adjust edge strength for a stronger or bolder edge
+        outlinePass.edgeStrength = 2.0; // Increase for a stronger outline
+
+        // Adjust edge glow for a glow effect (0 for no glow)
+        outlinePass.edgeGlow = 0.0; // Set to a higher value for a glow effect
+
+        // Add the modified outline pass to the composer
+        this._composer.addPass(outlinePass);
+
+        const fxaaPass = new ShaderPass(FXAAShader);
+        fxaaPass.material.uniforms['resolution'].value.set(
+            1 / window.innerWidth,
+            1 / window.innerHeight
+        );
+        this._composer.addPass(fxaaPass);
+
         const loader = new THREE.CubeTextureLoader();
         const texture = loader.load([
             './resources/right.png',
@@ -143,12 +183,15 @@ class BasicWorldDemo {
 
         const boxSize = 5;
         const gridSize = 21; // Adjust the grid size as needed
+        this.gridBoxes = [];
 
         for (let i = 0; i < gridSize; i++) {
             for (let j = 0; j < gridSize; j++) {
                 const box = new THREE.Mesh(
                     new THREE.BoxGeometry(boxSize, boxSize, boxSize * 2), // Each box is 5x5x10
-                    new THREE.MeshStandardMaterial({ color: 0xFFFFFF })
+                    //new THREE.MeshStandardMaterial({ color: 0xFFFFFF })
+                    //Math.random() * 0xFFFFFF
+                    new THREE.MeshStandardMaterial({ color: Math.random() * 0xFFFFFF })
                 );
                 box.position.set(i * boxSize, 0, j * boxSize); // Adjust the positions according to the grid
                 //console.log('Setting box position: ', box.position.x, box.position.y, box.position.z);
@@ -157,6 +200,7 @@ class BasicWorldDemo {
                 box.receiveShadow = true;
 
                 this._scene.add(box);
+                this.gridBoxes.push(box);
 
                 const rbBox = new RigidBody();
                 rbBox.createBox(0, box.position, box.quaternion, new THREE.Vector3(boxSize, boxSize, boxSize * 2));
@@ -169,7 +213,10 @@ class BasicWorldDemo {
             }
         }
 
-        const socket = io('https://78.138.17.29:3000');
+        const socket = io('https://78.138.17.29:3000', {
+            pingInterval: 25000, 
+            pingTimeout: 5000, 
+        });
 
         //Create our own box here and send its information to server
         socket.on('player-created', (playerData) => {
@@ -294,8 +341,10 @@ class BasicWorldDemo {
                 w: quaternionData.w
             };
 
-            socket.emit('update-box', { position, color, quaternion});
+            socket.emit('update-box', { position, color, quaternion });
         }, false);
+
+        outlinePass.selectedObjects = this.gridBoxes;
 
         this.tmpTransform_ = new Ammo.btTransform();
         this.previousRAF_ = null;
@@ -334,7 +383,8 @@ class BasicWorldDemo {
             }
 
             this.step_(t - this.previousRAF_);
-            this._threejs.render(this._scene, this._camera);
+            this._composer.render();
+            //this._threejs.render(this._scene, this._camera);
             this._RAF();
             this.previousRAF_ = t;
         });
