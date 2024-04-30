@@ -191,7 +191,7 @@ class BasicWorldDemo {
                     new THREE.BoxGeometry(boxSize, boxSize, boxSize * 2), // Each box is 5x5x10
                     //new THREE.MeshStandardMaterial({ color: 0xFFFFFF })
                     //Math.random() * 0xFFFFFF
-                    new THREE.MeshStandardMaterial({ color: Math.random() * 0xFFFFFF })
+                    new THREE.MeshStandardMaterial({ color: 0xFFFFFF })
                 );
                 box.position.set(i * boxSize, 0, j * boxSize); // Adjust the positions according to the grid
                 //console.log('Setting box position: ', box.position.x, box.position.y, box.position.z);
